@@ -7,3 +7,5 @@ project ("allradixsort" VERSION 0.1)
 
 # Include sub-projects.
 add_subdirectory ("unittests")
+add_subdirectory ("perftests")
+

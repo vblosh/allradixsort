@@ -2,6 +2,7 @@
 #include <vector>
 #include <tuple>
 #include <functional>
+#include <type_traits>
 
 namespace allradixsort
 {
@@ -18,12 +19,23 @@ namespace allradixsort
 	{
 		std::vector<index_t> equals(num_bins);
 		size_t size = 0; // we only require to use forward iterator, therefore, we have to find out the size of input container
-		for (ForwardIt it = first; it != last; ++it)
-		{
-			auto key = get_key(*it);
-			++equals[key];
-			++size;
+
+		using category = typename std::iterator_traits<ForwardIt>::iterator_category;
+		if constexpr (std::is_same_v<category, std::random_access_iterator_tag>) {
+			size = last - first;
+			for (ForwardIt it = first; it != last; ++it)
+			{
+				++equals[get_key(*it)];
+			}
 		}
+		else {
+			for (ForwardIt it = first; it != last; ++it)
+			{
+				++equals[get_key(*it)];
+				++size;
+			}
+		}
+	
 		return { equals, size };
 	}
 

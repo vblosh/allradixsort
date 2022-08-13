@@ -1,15 +1,15 @@
 ﻿#include <stdint.h>
 #include <gtest/gtest.h>
 #include <vector>
-#include <array>
-#include <functional>
 #include <random>
 #include <limits>
 #include <iomanip>
 
 #include "radixsort.h"
 
-namespace allradixsort::tests
+namespace allradixsort
+{
+namespace tests
 {
 	using namespace std;
 
@@ -21,8 +21,8 @@ namespace allradixsort::tests
 	template<class KeyType>
 	void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
 	{
-		KeyType curmax = std::numeric_limits<KeyType>::min();
-		KeyType curmin = std::numeric_limits<KeyType>::max();
+		int64_t curmax = std::numeric_limits<KeyType>::min();
+		int64_t curmin = std::numeric_limits<KeyType>::max();
 
 		std::random_device rd;
 		std::default_random_engine eng(rd());
@@ -30,7 +30,7 @@ namespace allradixsort::tests
 		// fill array
 		for (size_t i = 0; i < arr.size(); i++)
 		{
-			arr[i] = { static_cast<KeyType>(distr(eng)*(max - min)	+ min)
+			arr[i] = { static_cast<KeyType>(distr(eng)*((int64_t)max - min)	+ min)
 				, i };
 			if (arr[i].first > curmax) curmax = arr[i].first;
 			if (arr[i].first < curmin) curmin = arr[i].first;
@@ -117,7 +117,7 @@ namespace allradixsort::tests
 	TEST(RadixSort, uint64_t_test)
 	{
 		using KeyType = uint64_t;
-		TypeTest<KeyType>(std::numeric_limits<KeyType>::min(), std::numeric_limits<KeyType>::max());
+		TypeTest<KeyType>(std::numeric_limits<KeyType>::min(), std::numeric_limits<KeyType>::max()/2);
 	}
 
 	TEST(RadixSort, int8_t_test)
@@ -141,7 +141,7 @@ namespace allradixsort::tests
 	TEST(RadixSort, int64_t_test)
 	{
 		using KeyType = int64_t;
-		TypeTest<KeyType>(std::numeric_limits<KeyType>::min(), std::numeric_limits<KeyType>::max());
+		TypeTest<KeyType>(std::numeric_limits<KeyType>::min()/2, std::numeric_limits<KeyType>::max()/2);
 	}
 	
-}
+}}
