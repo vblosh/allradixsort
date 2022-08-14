@@ -10,7 +10,7 @@ find_package(GTest REQUIRED)
 include(GoogleTest)
 
 set(INCLUDE_DIR "../include/")
-set(HEADER_FILES ${INCLUDE_DIR}countingsort.h ${INCLUDE_DIR}radixsort.h ${INCLUDE_DIR}traits.h)
+set(HEADER_FILES ${INCLUDE_DIR}radixsort.h ${INCLUDE_DIR}traits.h)
 set(SOURCE_FILES tests.cpp)
 
 add_executable(runUnitTests ${SOURCE_FILES} ${HEADER_FILES})

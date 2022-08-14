@@ -30,10 +30,13 @@ namespace tests
 		// fill array
 		for (size_t i = 0; i < arr.size(); i++)
 		{
-			arr[i] = { static_cast<KeyType>(distr(eng)*((int64_t)max - min)	+ min)
-				, i };
+			arr[i] = { static_cast<KeyType>(distr(eng)*((int64_t)max - min)	+ min), i };
+
+#pragma warning( push )
+#pragma warning( disable : 4018 )
 			if (arr[i].first > curmax) curmax = arr[i].first;
 			if (arr[i].first < curmin) curmin = arr[i].first;
+#pragma warning( pop )
 		}
 		//std::cout << " min=" << curmin << " max=" << curmax  << '\n';
 	}
@@ -49,51 +52,13 @@ namespace tests
 		}
 	}
 
-	TEST(CountingSort, test_it)
-	{
-		const size_t num_bins = 256;
-		using KeyType = uint8_t;
-		Array<KeyType> data(N);
-
-		prepare_data<KeyType>(data, std::numeric_limits<KeyType>::min(), std::numeric_limits<KeyType>::max());
-		auto out = counting_sort(data.begin(), data.end(),
-			[](const auto& el) { return el.first & 0xff; }
-			, num_bins, false);
-		check_data(out);
-	}
-
-	TEST(CountingSort, test_negative)
-	{
-		const size_t num_bins = 256;
-		using KeyType = int8_t;
-		Array<KeyType> data(N);
-
-		prepare_data<KeyType>(data, std::numeric_limits<KeyType>::min(), std::numeric_limits<KeyType>::max());
-		auto out = counting_sort(data.begin(), data.end(),
-			[](const auto& el) { return el.first & 0xff; }
-		, num_bins, true);
-		check_data(out);
-	}
-
-	TEST(CountingSort, test_const_it)
-	{
-		const size_t num_bins = 256;
-		Array<uint16_t> data(N);
-		prepare_data<uint16_t>(data, 0, num_bins);
-		auto out = counting_sort(data.cbegin(), data.cend(),
-			[](const auto& el) { return el.first & 0xff; }
-		, num_bins, false);
-		check_data(out);
-	}
-
 	template<typename KeyType>
 	void TypeTest(KeyType min, KeyType max)
 	{
 		Array<KeyType> data(N);
 		prepare_data<KeyType>(data, min, max);
-		auto out = sort<KeyType>(data.cbegin(), data.cend(),
-			[](const auto& el) { return el.first; });
-		check_data(out);
+		sort<KeyType>(data.begin(), data.end(), [](const auto& el) { return el.first; });
+		check_data(data);
 	}
 
 	TEST(RadixSort, uint8_t_test)

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(INCLUDE_DIR "../include/")
-set(HEADER_FILES ${INCLUDE_DIR}countingsort.h ${INCLUDE_DIR}radixsort.h ${INCLUDE_DIR}traits.h)
+set(HEADER_FILES ${INCLUDE_DIR}radixsort.h ${INCLUDE_DIR}traits.h)
 set(SOURCE_FILES tests.cpp)
 add_executable(runPerfomanceTests ${SOURCE_FILES} ${HEADER_FILES})
 target_include_directories(runPerfomanceTests PRIVATE ${INCLUDE_DIR})

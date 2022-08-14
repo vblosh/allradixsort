@@ -1,25 +1,88 @@
 #pragma once
-#include "countingsort.h"
+#include <vector>
+#include <array>
+#include <functional>
+#include <type_traits>
+
 #include "traits.h"
 
 namespace allradixsort
 {
 	template<class KeyType, class ForwardIt>
-	std::vector<cont_type_t<ForwardIt>>
-		sort(ForwardIt first, ForwardIt last, std::function<KeyType(const cont_type_t<ForwardIt>&)> get_key)
+	void sort(ForwardIt first, ForwardIt last, std::function<KeyType(const cont_type_t<ForwardIt>&)> get_key)
 	{
-		std::vector<cont_type_t<ForwardIt>> result = counting_sort(first, last
-			, traits<KeyType, ForwardIt>::get_pass_key(0, get_key)
-			, traits<KeyType, ForwardIt>::get_num_bins(0)
-			, std::numeric_limits<KeyType>::is_signed && traits<KeyType, ForwardIt>::num_passes == 1);
-		
-		for (size_t i = 1; i < traits<KeyType, ForwardIt>::num_passes; i++)		{
-			result = counting_sort(result.cbegin(), result.cend()
-				, traits<KeyType, ForwardIt>::get_pass_key(i, get_key)
-				, traits<KeyType, ForwardIt>::get_num_bins(i)
-				, std::numeric_limits<KeyType>::is_signed && i == (traits<KeyType, ForwardIt>::num_passes - 1));
+		constexpr size_t num_passes = traits<KeyType>::num_passes;
+		constexpr size_t bits_in_mask = traits<KeyType>::bits_in_mask;
+		constexpr size_t mask = ~(~0x0u << bits_in_mask);
+		constexpr size_t num_bins = mask + 1;
+		size_t size = last - first;
+
+		using hists_vector = std::vector<std::vector<index_t>>;
+		// Creating histograms, count each occurrence of indexed-byte value.
+		// In particular, histograms don't change when you change the order, 
+		// so I just do all the histogramming in one pass through the data. One read builds several histograms.
+		hists_vector equals{ num_passes, std::vector<index_t>(num_bins) };
+		for (ForwardIt it = first; it != last; ++it)
+		{
+			for (size_t pass = 0; pass < num_passes; ++pass)
+			{
+				auto key = get_key(*it);
+				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
+				++equals[pass][pass_hist_val];
+			}
 		}
-		return result;
+
+		// accumulate histograms.
+		// generate positional offsets. adjust starting point if signed.
+		hists_vector less{ num_passes, std::vector<index_t>(num_bins) };
+		for (size_t pass = 0; pass < num_passes; ++pass)
+		{
+			bool is_signed = std::numeric_limits<KeyType>::is_signed
+				&& pass == (traits<KeyType>::num_passes - 1);
+
+			size_t start = is_signed ? num_bins / 2 : 0;
+			for (size_t i = 1 + start; i < num_bins + start; ++i)
+			{
+				less[pass][i % num_bins] = less[pass][(i - 1) % num_bins] + equals[pass][(i - 1) % num_bins];
+			}
+		}
+
+		// distribute.
+		// stable reordering of elements. backward to avoid shifting
+		// the counter array.
+		// temp buffer to hold values in odd passes
+		std::vector<cont_type_t<ForwardIt>> buffer(size);
+
+		for (size_t pass = 0; pass < num_passes;)
+		{
+			for (ForwardIt it = first; it != last; ++it)
+			{
+				auto key = get_key(*it);
+				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
+
+				auto index = less[pass][pass_hist_val];
+				*(buffer.begin() + index) = *it;
+				++less[pass][pass_hist_val];
+			}
+			++pass;
+			if (pass == num_passes) {
+				// copy values back to input container
+				std::copy(buffer.begin(), buffer.end(), first);
+			}
+			else {
+				// use input container as a buffer
+				for (auto it = buffer.begin(); it != buffer.end(); ++it)
+				{
+					auto key = get_key(*it);
+					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
+
+					auto index = less[pass][pass_hist_val];
+					*(first + index) = *it;
+					++less[pass][pass_hist_val];
+				}
+			}
+			++pass;
+		}
 	}
 }
 

@@ -35,14 +35,13 @@ void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
 
 int main()
 {
-	using KeyType = int32_t;
+	using KeyType = uint8_t;
 	Array<KeyType> data(N);
 	
 	{
 		prepare_data<KeyType>(data, std::numeric_limits<KeyType>::min(), std::numeric_limits<KeyType>::max());
 		auto start_time = std::chrono::high_resolution_clock::now();
-		std::sort(data.begin(), data.end(),
-			[](const auto& a, const auto& b) { return a.first < b.first; });
+		std::sort(data.begin(), data.end(),	[](const auto& a, const auto& b) { return a.first < b.first; });
 		auto stop_time = std::chrono::high_resolution_clock::now();
 		std::cout << "  std::sort " << N << " elements duration "
 			<< std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time).count() << " ms\n";
@@ -50,8 +49,7 @@ int main()
 	
 	{
 		auto start_time = std::chrono::high_resolution_clock::now();
-		auto out = allradixsort::sort<KeyType>(data.cbegin(), data.cend(),
-			[](const auto& el) { return el.first; });
+		allradixsort::sort<KeyType>(data.begin(), data.end(),	[](const auto& el) { return el.first; });
 		auto stop_time = std::chrono::high_resolution_clock::now();
 		std::cout << "radix sort " << N << " elements duration "
 			<< std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time).count() << " ms\n";
