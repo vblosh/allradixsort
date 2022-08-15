@@ -9,7 +9,7 @@
 #include "radixsort.h"
 
 template<class KeyType>
-using Array = std::vector<std::pair<KeyType, KeyType>>;
+using Array = std::vector<KeyType>; 
 
 template<class KeyType>
 void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
@@ -23,12 +23,8 @@ void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
 	// fill array
 	for (size_t i = 0; i < arr.size(); i++)
 	{
-		arr[i] = { static_cast<KeyType>(distr(eng)*((int64_t)max - min)	+ min)
-			, static_cast<KeyType>(i) };
-		if (arr[i].first > curmax) curmax = arr[i].first;
-		if (arr[i].first < curmin) curmin = arr[i].first;
+		arr[i] = { static_cast<KeyType>(distr(eng) * ((int64_t)max - min) + min) };
 	}
-	//std::cout << " min=" << curmin << " max=" << curmax  << '\n';
 }
 
 template<class KeyType, class SortFn>
@@ -53,7 +49,7 @@ void RunPerfomanceTest(size_t size, size_t repeat)
 	auto duration1 = RunSortMeasureTime(indata, repeat,
 		[](Array<KeyType>& data)
 		{
-			std::sort(data.begin(), data.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+			std::sort(data.begin(), data.end());
 		});
 	std::cout << " std::sort " << size << " elements " << repeat << " times,  total " << size * repeat << " duration "
 		<< duration1 << " ms\n";
@@ -61,7 +57,7 @@ void RunPerfomanceTest(size_t size, size_t repeat)
 	auto duration2 = RunSortMeasureTime(indata, repeat,
 		[](Array<KeyType>& data)
 		{
-			allradixsort::sort<KeyType>(data.begin(), data.end(), [](const auto& el) { return el.first; });
+			allradixsort::sort(data.begin(), data.end());
 		});
 	std::cout << "radix sort " << size << " elements " << repeat << " times,  total " << size * repeat << " duration "
 		<< duration2 << " ms\n";
