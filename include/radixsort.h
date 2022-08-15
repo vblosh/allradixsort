@@ -8,8 +8,8 @@
 
 namespace allradixsort
 {
-	template<class KeyType, class ForwardIt>
-	void sort(ForwardIt first, ForwardIt last, std::function<KeyType(const cont_type_t<ForwardIt>&)> get_key)
+	template<class KeyType, class ForwardIt, class GetKeyFn>
+	void sort(ForwardIt first, ForwardIt last, GetKeyFn get_key)
 	{
 		constexpr size_t num_passes = traits<KeyType>::num_passes;
 		constexpr size_t bits_in_mask = traits<KeyType>::bits_in_mask;
@@ -26,7 +26,7 @@ namespace allradixsort
 		{
 			for (size_t pass = 0; pass < num_passes; ++pass)
 			{
-				auto key = get_key(*it);
+				KeyType key = get_key(*it);
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 				++equals[pass][pass_hist_val];
 			}
@@ -57,7 +57,7 @@ namespace allradixsort
 		{
 			for (ForwardIt it = first; it != last; ++it)
 			{
-				auto key = get_key(*it);
+				KeyType key = get_key(*it);
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 
 				auto index = less[pass][pass_hist_val];
