@@ -51,7 +51,7 @@ namespace allradixsort
 		// stable reordering of elements. backward to avoid shifting
 		// the counter array.
 		// temp buffer to hold values in odd passes
-		std::vector<cont_type_t<ForwardIt>> buffer(size);
+		cont_type_t<ForwardIt>* buffer = static_cast<cont_type_t<ForwardIt>*>(malloc(sizeof(cont_type_t<ForwardIt>) * size));
 
 		for (size_t pass = 0; pass < num_passes;)
 		{
@@ -61,17 +61,22 @@ namespace allradixsort
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 
 				auto index = less[pass][pass_hist_val];
-				*(buffer.begin() + index) = *it;
+				if (pass == 0) {
+					new(buffer + index) cont_type_t<ForwardIt>(*it);
+				}
+				else {
+					*(buffer + index) = *it;
+				}
 				++less[pass][pass_hist_val];
 			}
 			++pass;
 			if (pass == num_passes) {
 				// copy values back to input container
-				std::copy(buffer.begin(), buffer.end(), first);
+				std::copy(buffer, buffer + size, first);
 			}
 			else {
 				// use input container as a buffer
-				for (auto it = buffer.begin(); it != buffer.end(); ++it)
+				for (auto it = buffer; it != buffer + size; ++it)
 				{
 					auto key = get_key(*it);
 					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
@@ -83,6 +88,7 @@ namespace allradixsort
 			}
 			++pass;
 		}
+		free(buffer);
 	}
 }
 
