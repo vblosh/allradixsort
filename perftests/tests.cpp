@@ -11,7 +11,8 @@
 template<class KeyType>
 using Array = std::vector<std::pair<KeyType, KeyType>>;
 
-constexpr size_t N = 10000000;
+constexpr size_t N = 1000000;
+const size_t REPEAT = 10;
 
 template<class KeyType>
 void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
@@ -33,27 +34,41 @@ void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
 	//std::cout << " min=" << curmin << " max=" << curmax  << '\n';
 }
 
+template<class KeyType, class SortFn>
+long long RunSortMeasureTime(Array<KeyType>& indata, SortFn sort_fn)
+{
+	std::vector<Array<KeyType>> data(REPEAT, indata);
+	auto start_time = std::chrono::high_resolution_clock::now();
+	for (size_t i = 0; i < REPEAT; i++)
+	{
+		sort_fn(data[i]);
+	}
+	auto stop_time = std::chrono::high_resolution_clock::now();
+	return std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time).count();
+}
+
 int main()
 {
-	using KeyType = uint8_t;
-	Array<KeyType> data(N);
+	using KeyType = uint32_t;
+	Array<KeyType> indata(N);
+	prepare_data<KeyType>(indata, std::numeric_limits<KeyType>::min(), std::numeric_limits<KeyType>::max());
 	
-	{
-		prepare_data<KeyType>(data, std::numeric_limits<KeyType>::min(), std::numeric_limits<KeyType>::max());
-		auto start_time = std::chrono::high_resolution_clock::now();
-		std::sort(data.begin(), data.end(),	[](const auto& a, const auto& b) { return a.first < b.first; });
-		auto stop_time = std::chrono::high_resolution_clock::now();
-		std::cout << "  std::sort " << N << " elements duration "
-			<< std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time).count() << " ms\n";
-	}
-	
-	{
-		auto start_time = std::chrono::high_resolution_clock::now();
-		allradixsort::sort<KeyType>(data.begin(), data.end(),	[](const auto& el) { return el.first; });
-		auto stop_time = std::chrono::high_resolution_clock::now();
-		std::cout << "radix sort " << N << " elements duration "
-			<< std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time).count() << " ms\n";
-	}
+	long long duration;
+	duration = RunSortMeasureTime(indata,
+		[](Array<KeyType>& data) 
+		{ 
+			std::sort(data.begin(), data.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+		});
+	std::cout << " std::sort " << N << " elements " << REPEAT << " times,  total " << N * REPEAT << " duration "
+		<< duration << " ms\n";
+
+	duration = RunSortMeasureTime(indata,
+		[](Array<KeyType>& data)
+		{
+			allradixsort::sort<KeyType>(data.begin(), data.end(), [](const auto& el) { return el.first; });
+		});
+	std::cout << "radix sort " << N << " elements " << REPEAT << " times,  total " << N * REPEAT << " duration "
+		<< duration << " ms\n";
 
 	return 0;
 }
