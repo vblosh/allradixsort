@@ -23,7 +23,7 @@
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "linux_x64" ],
       "wslPath": "${defaultWSLPath}",
-      "variables": []
+      "cmakeToolchain": "/home/pnp/src/vcpkg/scripts/buildsystems/vcpkg.cmake"
     }
   ]
 }
