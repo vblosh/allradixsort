@@ -8,21 +8,22 @@
 
 namespace allradixsort
 {
+	// Sorts [begin, end) using insertion sort with the given key extraction function.
 	template<class KeyType, class Iter, class GetKeyFn>
-	void sort(Iter first, Iter last, GetKeyFn get_key)
+	void sort(Iter begin, Iter end, GetKeyFn get_key)
 	{
 		constexpr size_t num_passes = traits<KeyType>::num_passes;
 		constexpr size_t bits_in_mask = traits<KeyType>::bits_in_mask;
 		constexpr size_t mask = ~(~0x0u << bits_in_mask);
 		constexpr size_t num_bins = mask + 1;
-		size_t size = last - first;
+		size_t size = end - begin;
 
 		using hists_vector = std::vector<std::vector<index_t>>;
 		// Creating histograms, count each occurrence of indexed-byte value.
 		// In particular, histograms don't change when you change the order, 
 		// so I just do all the histogramming in one pass through the data. One read builds several histograms.
 		hists_vector equals{ num_passes, std::vector<index_t>(num_bins) };
-		for (Iter it = first; it != last; ++it)
+		for (Iter it = begin; it != end; ++it)
 		{
 			for (size_t pass = 0; pass < num_passes; ++pass)
 			{
@@ -55,7 +56,7 @@ namespace allradixsort
 
 		for (size_t pass = 0; pass < num_passes;)
 		{
-			for (Iter it = first; it != last; ++it)
+			for (Iter it = begin; it != end; ++it)
 			{
 				KeyType key = get_key(*it);
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
@@ -67,7 +68,7 @@ namespace allradixsort
 			++pass;
 			if (pass == num_passes) {
 				// copy values back to input container
-				std::copy(buffer.begin(), buffer.end(), first);
+				std::copy(buffer.begin(), buffer.end(), begin);
 			}
 			else {
 				// use input container as a buffer
@@ -77,7 +78,7 @@ namespace allradixsort
 					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 
 					auto index = less[pass][pass_hist_val];
-					*(first + index) = *it;
+					*(begin + index) = *it;
 					++less[pass][pass_hist_val];
 				}
 			}
@@ -85,10 +86,11 @@ namespace allradixsort
 		}
 	}
 
+	// Sorts [begin, end) using radix sort 
 	template<class Iter>
-	void sort(Iter first, Iter last)
+	void sort(Iter begin, Iter end)
 	{
-		sort<cont_type_t<Iter>, Iter>(first, last, [](const cont_type_t<Iter>& el) { return el; });
+		sort<cont_type_t<Iter>, Iter>(begin, end, [](const cont_type_t<Iter>& el) { return el; });
 	}
 }
 
