@@ -11,9 +11,6 @@
 template<class KeyType>
 using Array = std::vector<std::pair<KeyType, KeyType>>;
 
-constexpr size_t N = 1000000;
-const size_t REPEAT = 10;
-
 template<class KeyType>
 void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
 {
@@ -35,11 +32,11 @@ void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
 }
 
 template<class KeyType, class SortFn>
-long long RunSortMeasureTime(Array<KeyType>& indata, SortFn sort_fn)
+long long RunSortMeasureTime(Array<KeyType>& indata, size_t repeat, SortFn sort_fn)
 {
-	std::vector<Array<KeyType>> data(REPEAT, indata);
+	std::vector<Array<KeyType>> data(repeat, indata);
 	auto start_time = std::chrono::high_resolution_clock::now();
-	for (size_t i = 0; i < REPEAT; i++)
+	for (size_t i = 0; i < repeat; i++)
 	{
 		sort_fn(data[i]);
 	}
@@ -47,28 +44,34 @@ long long RunSortMeasureTime(Array<KeyType>& indata, SortFn sort_fn)
 	return std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time).count();
 }
 
-int main()
+template<class KeyType>
+void RunPerfomanceTest(size_t size, size_t repeat)
 {
-	using KeyType = uint32_t;
-	Array<KeyType> indata(N);
+	Array<KeyType> indata(size);
 	prepare_data<KeyType>(indata, std::numeric_limits<KeyType>::min(), std::numeric_limits<KeyType>::max());
-	
-	long long duration;
-	duration = RunSortMeasureTime(indata,
-		[](Array<KeyType>& data) 
-		{ 
+
+	auto duration1 = RunSortMeasureTime(indata, repeat,
+		[](Array<KeyType>& data)
+		{
 			std::sort(data.begin(), data.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
 		});
-	std::cout << " std::sort " << N << " elements " << REPEAT << " times,  total " << N * REPEAT << " duration "
-		<< duration << " ms\n";
+	std::cout << " std::sort " << size << " elements " << repeat << " times,  total " << size * repeat << " duration "
+		<< duration1 << " ms\n";
 
-	duration = RunSortMeasureTime(indata,
+	auto duration2 = RunSortMeasureTime(indata, repeat,
 		[](Array<KeyType>& data)
 		{
 			allradixsort::sort<KeyType>(data.begin(), data.end(), [](const auto& el) { return el.first; });
 		});
-	std::cout << "radix sort " << N << " elements " << REPEAT << " times,  total " << N * REPEAT << " duration "
-		<< duration << " ms\n";
+	std::cout << "radix sort " << size << " elements " << repeat << " times,  total " << size * repeat << " duration "
+		<< duration2 << " ms\n";
+	std::cout << "radix sort is " << double(duration1) / duration2 * 100 << "% faster for " << size << " elements\n";
+}
+
+int main()
+{
+	RunPerfomanceTest<uint32_t>(1000000, 10);
+	RunPerfomanceTest<uint32_t>(10000000, 1);
 
 	return 0;
 }
