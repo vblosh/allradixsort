@@ -8,8 +8,8 @@
 
 namespace allradixsort
 {
-	template<class KeyType, class ForwardIt, class GetKeyFn>
-	void sort(ForwardIt first, ForwardIt last, GetKeyFn get_key)
+	template<class KeyType, class Iter, class GetKeyFn>
+	void sort(Iter first, Iter last, GetKeyFn get_key)
 	{
 		constexpr size_t num_passes = traits<KeyType>::num_passes;
 		constexpr size_t bits_in_mask = traits<KeyType>::bits_in_mask;
@@ -22,7 +22,7 @@ namespace allradixsort
 		// In particular, histograms don't change when you change the order, 
 		// so I just do all the histogramming in one pass through the data. One read builds several histograms.
 		hists_vector equals{ num_passes, std::vector<index_t>(num_bins) };
-		for (ForwardIt it = first; it != last; ++it)
+		for (Iter it = first; it != last; ++it)
 		{
 			for (size_t pass = 0; pass < num_passes; ++pass)
 			{
@@ -51,11 +51,11 @@ namespace allradixsort
 		// stable reordering of elements. backward to avoid shifting
 		// the counter array.
 		// temp buffer to hold values in odd passes
-		std::vector<cont_type_t<ForwardIt>> buffer(size);
+		std::vector<cont_type_t<Iter>> buffer(size);
 
 		for (size_t pass = 0; pass < num_passes;)
 		{
-			for (ForwardIt it = first; it != last; ++it)
+			for (Iter it = first; it != last; ++it)
 			{
 				KeyType key = get_key(*it);
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
@@ -83,6 +83,12 @@ namespace allradixsort
 			}
 			++pass;
 		}
+	}
+
+	template<class Iter>
+	void sort(Iter first, Iter last)
+	{
+		sort<cont_type_t<Iter>, Iter>(first, last, [](const cont_type_t<Iter>& el) { return el; });
 	}
 }
 
