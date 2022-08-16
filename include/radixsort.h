@@ -14,8 +14,8 @@ namespace allradixsort
 	{
 		constexpr size_t num_passes = traits<KeyType>::num_passes;
 		constexpr size_t bits_in_mask = traits<KeyType>::bits_in_mask;
-		constexpr size_t mask = ~(~0x0u << bits_in_mask);
-		constexpr size_t num_bins = mask + 1;
+		constexpr size_t mask = traits<KeyType>::mask;
+		constexpr size_t num_bins = traits<KeyType>::num_bins;
 		size_t size = end - begin;
 
 		using hists_vector = std::vector<std::vector<index_t>>;
@@ -27,7 +27,7 @@ namespace allradixsort
 		{
 			for (size_t pass = 0; pass < num_passes; ++pass)
 			{
-				KeyType key = get_key(*it);
+				size_t key = get_key(*it);
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 				++hist[pass][pass_hist_val];
 			}
@@ -37,7 +37,7 @@ namespace allradixsort
 		// generate positional offsets. adjust starting point if signed.
 		for (size_t pass = 0; pass < num_passes; ++pass)
 		{
-			bool is_signed = std::numeric_limits<KeyType>::is_signed
+			bool is_signed = traits<KeyType>::is_signed_integer
 				&& pass == (traits<KeyType>::num_passes - 1);
 
 			index_t tsum, sum = 0;

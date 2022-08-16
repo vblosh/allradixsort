@@ -32,6 +32,11 @@ namespace allradixsort
 		static constexpr size_t num_passes = get_num_bits<KeyType>() % bits_in_mask == 0 ? 
 			get_num_passes<KeyType>(bits_in_mask) 
 			: get_num_passes<KeyType>(bits_in_mask) + 1;
+		static constexpr size_t mask = ~(~0x0u << bits_in_mask);
+		static constexpr size_t num_bins = mask + 1;
+		static constexpr bool is_float = std::numeric_limits<KeyType>::is_iec559;
+		static constexpr bool is_signed_integer = std::numeric_limits<KeyType>::is_signed
+			&& std::numeric_limits<KeyType>::is_integer;
 	};
 
 	template<>
