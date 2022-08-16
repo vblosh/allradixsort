@@ -25,9 +25,9 @@ namespace allradixsort
 		hists_vector hist{ num_passes, std::vector<index_t>(num_bins) };
 		for (Iter it = begin; it != end; ++it)
 		{
+			size_t key = get_key(*it);
 			for (size_t pass = 0; pass < num_passes; ++pass)
 			{
-				size_t key = get_key(*it);
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 				++hist[pass][pass_hist_val];
 			}
