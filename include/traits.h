@@ -3,7 +3,7 @@
 
 namespace allradixsort
 {
-	using index_t = unsigned int;
+	using index_t = uint32_t;
 
 	template <typename It>
 	using cont_type_t = typename std::iterator_traits<It>::value_type;

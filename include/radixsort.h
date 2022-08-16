@@ -22,29 +22,31 @@ namespace allradixsort
 		// Creating histograms, count each occurrence of indexed-byte value.
 		// In particular, histograms don't change when you change the order, 
 		// so I just do all the histogramming in one pass through the data. One read builds several histograms.
-		hists_vector equals{ num_passes, std::vector<index_t>(num_bins) };
+		hists_vector hist{ num_passes, std::vector<index_t>(num_bins) };
 		for (Iter it = begin; it != end; ++it)
 		{
 			for (size_t pass = 0; pass < num_passes; ++pass)
 			{
 				KeyType key = get_key(*it);
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-				++equals[pass][pass_hist_val];
+				++hist[pass][pass_hist_val];
 			}
 		}
 
 		// accumulate histograms.
 		// generate positional offsets. adjust starting point if signed.
-		hists_vector less{ num_passes, std::vector<index_t>(num_bins) };
 		for (size_t pass = 0; pass < num_passes; ++pass)
 		{
 			bool is_signed = std::numeric_limits<KeyType>::is_signed
 				&& pass == (traits<KeyType>::num_passes - 1);
 
+			index_t tsum, sum = 0;
 			size_t start = is_signed ? num_bins / 2 : 0;
-			for (size_t i = 1 + start; i < num_bins + start; ++i)
+			for (size_t i = 0 + start; i < num_bins + start; ++i)
 			{
-				less[pass][i % num_bins] = less[pass][(i - 1) % num_bins] + equals[pass][(i - 1) % num_bins];
+				tsum = hist[pass][i % num_bins] + sum;
+				hist[pass][i % num_bins] = sum;
+				sum = tsum;
 			}
 		}
 
@@ -61,13 +63,13 @@ namespace allradixsort
 				KeyType key = get_key(*it);
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 
-				auto index = less[pass][pass_hist_val];
+				auto index = hist[pass][pass_hist_val];
 				*(buffer.begin() + index) = *it;
-				++less[pass][pass_hist_val];
+				++hist[pass][pass_hist_val];
 			}
 			++pass;
 			if (pass == num_passes) {
-				// copy values back to input container
+				// if num_passes is odd, copy values back to input container on last pass
 				std::copy(buffer.begin(), buffer.end(), begin);
 			}
 			else {
@@ -77,9 +79,9 @@ namespace allradixsort
 					auto key = get_key(*it);
 					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 
-					auto index = less[pass][pass_hist_val];
+					auto index = hist[pass][pass_hist_val];
 					*(begin + index) = *it;
-					++less[pass][pass_hist_val];
+					++hist[pass][pass_hist_val];
 				}
 			}
 			++pass;
