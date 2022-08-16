@@ -21,8 +21,8 @@ namespace tests
 	template<class KeyType>
 	void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
 	{
-		int64_t curmax = std::numeric_limits<KeyType>::min();
-		int64_t curmin = std::numeric_limits<KeyType>::max();
+		KeyType curmax = std::numeric_limits<KeyType>::min();
+		KeyType curmin = std::numeric_limits<KeyType>::max();
 
 		std::random_device rd;
 		std::default_random_engine eng(rd());
@@ -32,13 +32,36 @@ namespace tests
 		{
 			arr[i] = { static_cast<KeyType>(distr(eng)*((int64_t)max - min)	+ min), i };
 
-#pragma warning( push )
-#pragma warning( disable : 4018 )
 			if (arr[i].first > curmax) curmax = arr[i].first;
 			if (arr[i].first < curmin) curmin = arr[i].first;
-#pragma warning( pop )
 		}
-		//std::cout << " min=" << curmin << " max=" << curmax  << '\n';
+		std::cout << " min=" << curmin << " max=" << curmax  << '\n';
+	}
+
+	template<>
+	void prepare_data<float>(Array<float>& arr, float min, float max)
+	{
+		std::random_device rd;
+		std::default_random_engine eng(rd());
+		std::uniform_real_distribution<float> distr(min, max);
+		// fill array
+		for (size_t i = 0; i < arr.size(); i++)
+		{
+			arr[i] = { distr(eng), i };
+		}
+	}
+
+	template<>
+	void prepare_data<double>(Array<double>& arr, double min, double max)
+	{
+		std::random_device rd;
+		std::default_random_engine eng(rd());
+		std::uniform_real_distribution<double> distr(min, max);
+		// fill array
+		for (size_t i = 0; i < arr.size(); i++)
+		{
+			arr[i] = { distr(eng), i };
+		}
 	}
 
 	template<class KeyType>
@@ -106,7 +129,19 @@ namespace tests
 	TEST(RadixSort, int64_t_test)
 	{
 		using KeyType = int64_t;
-		TypeTest<KeyType>(std::numeric_limits<KeyType>::min()/2, std::numeric_limits<KeyType>::max()/2);
+		TypeTest<KeyType>(std::numeric_limits<KeyType>::min()/10, std::numeric_limits<KeyType>::max()/10);
+	}
+
+	TEST(RadixSort, float_test)
+	{
+		using KeyType = float;
+		TypeTest<KeyType>(-1000.0, 1000.0);
 	}
 	
+	TEST(RadixSort, double_test)
+	{
+		using KeyType = double;
+		TypeTest<KeyType>(-1000.0, 1000.0);
+	}
+
 }}
