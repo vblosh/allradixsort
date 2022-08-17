@@ -8,11 +8,17 @@
 
 namespace allradixsort
 {
+	// ================================================================================================
+	// flip a float for sorting
+	//  finds SIGN of fp number.
+	//  if it's 1 (negative float), it flips all bits
+	//  if it's 0 (positive float), it flips the sign only
+	// ================================================================================================
 	template<class KeyType, class ProxyType>
-	ProxyType float_flip(KeyType f);
+	ProxyType float_flip(KeyType& f);
 
 	template<>
-	uint32_t float_flip<float, uint32_t>(float f)
+	uint32_t float_flip<float, uint32_t>(float& f)
 	{
 		uint32_t val = *reinterpret_cast<uint32_t*>(&f);
 		uint32_t mask = -int32_t(val >> 31) | 0x80000000;
@@ -20,12 +26,38 @@ namespace allradixsort
 	};
 
 	template<>
-	uint64_t float_flip<double, uint64_t>(double f)
+	uint64_t float_flip<double, uint64_t>(double& f)
 	{
 		uint64_t val = *reinterpret_cast<uint64_t*>(&f);
 		size_t mask = -int64_t(val >> 63) | 0x8000000000000000;
 		return val ^ mask;
 	};
+
+	// ================================================================================================
+	// flip a float back (invert FloatFlip)
+	//  signed was flipped from above, so:
+	//  if sign is 1 (negative), it flips the sign bit back
+	//  if sign is 0 (positive), it flips all bits back
+	// ================================================================================================
+	template<class KeyType, class ProxyType>
+	ProxyType float_flip_inv(KeyType& f);
+
+	template<>
+	uint32_t float_flip_inv<float, uint32_t>(float& f)
+	{
+		uint32_t val = *reinterpret_cast<uint32_t*>(&f);
+		uint32_t mask = ((val >> 31) - 1) | 0x80000000;
+		return val ^ mask;
+	};
+
+	template<>
+	uint64_t float_flip_inv<double, uint64_t>(double& f)
+	{
+		uint64_t val = *reinterpret_cast<uint64_t*>(&f);
+		size_t mask = ((val >> 63) - 1) | 0x8000000000000000;
+		return val ^ mask;
+	};
+
 
 	// Sorts [fbegin, fend) using insertion sort with the given key extraction function.
 	template<class KeyType, class Iter, class GetKeyFn>
@@ -45,6 +77,8 @@ namespace allradixsort
 		for (Iter it = begin; it != end; ++it)
 		{
 			auto key = float_flip<KeyType, typename traits<KeyType>::proxy_type>(get_key(*it));
+			// save flipped key on first access
+			get_key(*it) = *reinterpret_cast<KeyType*>(&key);
 			for (size_t pass = 0; pass < num_passes; ++pass)
 			{
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
@@ -56,15 +90,11 @@ namespace allradixsort
 		// generate positional offsets. adjust starting point if signed.
 		for (size_t pass = 0; pass < num_passes; ++pass)
 		{
-			bool is_signed = traits<KeyType>::is_signed_integer
-				&& pass == (traits<KeyType>::num_passes - 1);
-
 			index_t tsum, sum = 0;
-			size_t start = is_signed ? num_bins / 2 : 0;
-			for (size_t i = 0 + start; i < num_bins + start; ++i)
+			for (size_t i = 0; i < num_bins; ++i)
 			{
-				tsum = hist[pass][i % num_bins] + sum;
-				hist[pass][i % num_bins] = sum;
+				tsum = hist[pass][i] + sum;
+				hist[pass][i] = sum;
 				sum = tsum;
 			}
 		}
@@ -79,11 +109,10 @@ namespace allradixsort
 		{
 			for (Iter it = begin; it != end; ++it)
 			{
-				auto key = float_flip<KeyType, typename traits<KeyType>::proxy_type>(get_key(*it));
+				auto key = *reinterpret_cast<typename traits<KeyType>::proxy_type*>(&get_key(*it));
+
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-
 				auto index = hist[pass][pass_hist_val];
-
 
 				*(buffer.begin() + index) = *it;
 				++hist[pass][pass_hist_val];
@@ -91,14 +120,32 @@ namespace allradixsort
 			++pass;
 
 			// use input container as a buffer
-			for (auto it = buffer.begin(); it != buffer.end(); ++it)
-			{
-				auto key = float_flip<KeyType, typename traits<KeyType>::proxy_type>(get_key(*it));
-				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
+			if (pass == num_passes - 1) {
+				for (auto it = buffer.begin(); it != buffer.end(); ++it)
+				{
+					auto key = *reinterpret_cast<typename traits<KeyType>::proxy_type*>(&get_key(*it));
+					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
+					auto index = hist[pass][pass_hist_val];
 
-				auto index = hist[pass][pass_hist_val];
-				*(begin + index) = *it;
-				++hist[pass][pass_hist_val];
+					// restore flipped key on first access
+					auto restored_key = float_flip_inv<KeyType, typename traits<KeyType>::proxy_type>(get_key(*it));
+					get_key(*it) = *reinterpret_cast<KeyType*>(&restored_key);
+
+					*(begin + index) = *it;
+					++hist[pass][pass_hist_val];
+				}
+			}
+			else {
+				for (auto it = buffer.begin(); it != buffer.end(); ++it)
+				{
+					auto key = *reinterpret_cast<typename traits<KeyType>::proxy_type*>(&get_key(*it));
+
+					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
+					auto index = hist[pass][pass_hist_val];
+
+					*(begin + index) = *it;
+					++hist[pass][pass_hist_val];
+				}
 			}
 			++pass;
 		}

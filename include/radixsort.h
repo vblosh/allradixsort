@@ -29,7 +29,7 @@ namespace allradixsort
 	template<class Iter>
 	void sort(Iter begin, Iter end)
 	{
-		sort<cont_type_t<Iter>, Iter>(begin, end, [](const cont_type_t<Iter>& el) { return el; });
+		sort<cont_type_t<Iter>, Iter>(begin, end, [](cont_type_t<Iter>& el) ->cont_type_t<Iter>&{ return el; });
 	}
 }
 

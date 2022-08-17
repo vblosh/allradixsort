@@ -35,7 +35,7 @@ namespace tests
 			if (arr[i].first > curmax) curmax = arr[i].first;
 			if (arr[i].first < curmin) curmin = arr[i].first;
 		}
-		std::cout << " min=" << curmin << " max=" << curmax  << '\n';
+		//std::cout << " min=" << curmin << " max=" << curmax  << '\n';
 	}
 
 	template<>
@@ -65,7 +65,7 @@ namespace tests
 	}
 
 	template<class KeyType>
-	void check_data(Array<KeyType>& InArr)
+	void check_sort(Array<KeyType>& InArr)
 	{
 		for (size_t i = 1; i < InArr.size(); ++i)
 		{
@@ -75,13 +75,28 @@ namespace tests
 		}
 	}
 
+	template<class KeyType>
+	void check_same(Array<KeyType>& InArr, Array<KeyType>& InArrCopy)
+	{
+		std::sort(InArrCopy.begin(), InArrCopy.end());
+		for (size_t i = 0; i < InArr.size(); ++i)
+		{
+			ASSERT_TRUE(InArrCopy[i].first == InArr[i].first);
+		}
+	}
+
 	template<typename KeyType>
 	void TypeTest(KeyType min, KeyType max)
 	{
 		Array<KeyType> data(N);
 		prepare_data<KeyType>(data, min, max);
-		sort<KeyType>(data.begin(), data.end(), [](const auto& el) { return el.first; });
-		check_data(data);
+		Array<KeyType> data_copy(data);
+
+		sort<KeyType>(data.begin(), data.end(), [](auto& el) -> KeyType& { return el.first; });
+		// check sorting
+		check_sort(data);
+		// check if data is the same
+		check_same(data, data_copy);
 	}
 
 	TEST(RadixSort, uint8_t_test)
@@ -143,5 +158,4 @@ namespace tests
 		using KeyType = double;
 		TypeTest<KeyType>(-1000.0, 1000.0);
 	}
-
 }}
