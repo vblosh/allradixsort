@@ -144,7 +144,7 @@ namespace tests
 	TEST(RadixSort, int64_t_test)
 	{
 		using KeyType = int64_t;
-		TypeTest<KeyType>(std::numeric_limits<KeyType>::min()/10, std::numeric_limits<KeyType>::max()/10);
+		TypeTest<KeyType>(std::numeric_limits<KeyType>::min()/2, std::numeric_limits<KeyType>::max()/2);
 	}
 
 	TEST(RadixSort, float_test)

@@ -46,7 +46,7 @@ namespace allradixsort
 			if (is_signed_and_last_pass) {
 				size_t cur_num_bins = (0x1u << (traits<KeyType>::num_bits - (num_passes - 1) * bits_in_mask));
 				size_t start = cur_num_bins / 2;
-				for (size_t i = 0 + start; i < num_bins + start; ++i)
+				for (size_t i = 0 + start; i < cur_num_bins + start; ++i)
 				{
 					tsum = hist[pass][i % cur_num_bins] + sum;
 					hist[pass][i % cur_num_bins] = sum;
@@ -92,6 +92,7 @@ namespace allradixsort
 				// use input container as a buffer
 				for (auto it = buffer.begin(); it != buffer.end(); ++it)
 				{
+
 					auto key = get_key(*it);
 					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 

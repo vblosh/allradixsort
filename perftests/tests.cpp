@@ -7,23 +7,9 @@
 #include <algorithm>
 
 #include "radixsort.h"
-#include <string>
-
-//template<class KeyType>
-//using Array = std::vector<KeyType>; 
-
-//template<class KeyType>
-//using Array = std::vector<std::pair<KeyType, std::string>>;
 
 template<class KeyType>
-struct Data
-{
-	KeyType first;
-	std::string second;
-};
-
-template<class KeyType>
-using Array = std::vector<Data<KeyType>>;
+using Array = std::vector<KeyType>; 
 
 template<class KeyType>
 void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
@@ -34,7 +20,7 @@ void prepare_data(Array<KeyType>& arr, KeyType min, KeyType max)
 	// fill array
 	for (size_t i = 0; i < arr.size(); i++)
 	{
-		arr[i] = { static_cast<KeyType>(distr(eng) * ((int64_t)max - min) + min), std::string("row number is ") + std::to_string(i) };
+		arr[i] = { static_cast<KeyType>(distr(eng) * ((int64_t)max - min) + min) };
 	}
 }
 
@@ -47,7 +33,19 @@ void prepare_data<int64_t>(Array<int64_t>& arr, int64_t min, int64_t max)
 	// fill array
 	for (size_t i = 0; i < arr.size(); i++)
 	{
-		arr[i] = { static_cast<int64_t>(distr(eng) * (max/10 - min/10) + min/10), std::string("row number is ") + std::to_string(i) };
+		arr[i] = { static_cast<int64_t>(distr(eng) * (max/10 - min/10) + min/10) };
+	}
+}
+
+
+template<class KeyType>
+void check_sort(Array<KeyType>& InArr)
+{
+	for (size_t i = 1; i < InArr.size(); ++i)
+	{
+		if (InArr[i - 1] > InArr[i]) {
+			throw std::runtime_error("Wrong sort order");
+		}
 	}
 }
 
@@ -61,6 +59,7 @@ long long RunSortMeasureTime(Array<KeyType>& indata, size_t repeat, SortFn sort_
 		sort_fn(data[i]);
 	}
 	auto stop_time = std::chrono::high_resolution_clock::now();
+	check_sort(data);
 	return std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time).count();
 }
 
@@ -73,7 +72,7 @@ void RunPerfomanceTest(size_t size, size_t repeat)
 	auto duration1 = RunSortMeasureTime(indata, repeat,
 		[](Array<KeyType>& data)
 		{
-			std::sort(data.begin(), data.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+			std::sort(data.begin(), data.end());
 		});
 	std::cout << " std::sort " << size << " elements " << repeat << " times,  total " << size * repeat << " duration "
 		<< duration1 << " ms\n";
@@ -81,11 +80,11 @@ void RunPerfomanceTest(size_t size, size_t repeat)
 	auto duration2 = RunSortMeasureTime(indata, repeat,
 		[](Array<KeyType>& data)
 		{
-			allradixsort::sort<KeyType>(data.begin(), data.end(), [](auto& el)-> KeyType& { return el.first; });
+			allradixsort::sort(data.begin(), data.end());
 		});
 	std::cout << "radix sort " << size << " elements " << repeat << " times,  total " << size * repeat << " duration "
 		<< duration2 << " ms\n";
-	std::cout << "radix sort is " << double(duration1) / duration2 << "times faster for " << size << " elements\n";
+	std::cout << "radix sort is " << double(duration1) / duration2 << " times faster for " << size << " elements\n";
 }
 
 int main()
