@@ -114,7 +114,7 @@ namespace allradixsort
 				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 				auto index = hist[pass][pass_hist_val];
 
-				*(buffer.begin() + index) = *it;
+				*(buffer.begin() + index) = std::move(*it);
 				++hist[pass][pass_hist_val];
 			}
 			++pass;
@@ -131,7 +131,7 @@ namespace allradixsort
 					auto restored_key = float_flip_inv<KeyType, typename traits<KeyType>::proxy_type>(get_key(*it));
 					get_key(*it) = *reinterpret_cast<KeyType*>(&restored_key);
 
-					*(begin + index) = *it;
+					*(begin + index) = std::move(*it);
 					++hist[pass][pass_hist_val];
 				}
 			}
@@ -143,7 +143,7 @@ namespace allradixsort
 					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
 					auto index = hist[pass][pass_hist_val];
 
-					*(begin + index) = *it;
+					*(begin + index) = std::move(*it);
 					++hist[pass][pass_hist_val];
 				}
 			}
