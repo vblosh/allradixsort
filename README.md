@@ -46,14 +46,14 @@ $ make
 ## Running perfomance tests
 
 1. Build the project
-2. `cd build/ && ./runPerfomanceTests`
+2. `cd build/ &&  perftests/runPerfomanceTests`
 
 ## Running unit tests
 
 This project uses *GoogleTest*.
 
 1. Build the project
-2. `cd build/ && ./runUnitTests`
+2. `cd build/ && unittests/runUnitTests`
 
 # Test results on Intel(R) Core(TM) i5-12500H 2.50 GHz
 ```
