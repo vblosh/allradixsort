@@ -12,13 +12,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(allradixsort INTERFACE )
 target_include_directories(allradixsort INTERFACE include)
 
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+find_package(GTest)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND GTest_FOUND)
+    message("GTest found, build unit tests")
     include(CTest)
-endif()
-
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     enable_testing()
     add_subdirectory ("unittests")
+endif()
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     add_subdirectory ("perftests")
 endif()
 

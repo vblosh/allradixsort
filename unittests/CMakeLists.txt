@@ -1,14 +1,14 @@
 ﻿cmake_minimum_required(VERSION 3.10)
 
 #GTEST
-find_package(GTest REQUIRED)
 include(GoogleTest)
 
 set(SOURCE_FILES tests.cpp)
+set(UNIT_TESTS "unittests")
 
-add_executable(runUnitTests ${SOURCE_FILES})
-target_include_directories(runUnitTests PRIVATE )
-target_link_libraries(runUnitTests GTest::GTest GTest::Main allradixsort)
+add_executable(${UNIT_TESTS} ${SOURCE_FILES})
+target_include_directories(${UNIT_TESTS} PRIVATE )
+target_link_libraries(${UNIT_TESTS} GTest::GTest GTest::Main allradixsort)
 
-add_test( runUnitTests runUnitTests )
+add_test( ${UNIT_TESTS} ${UNIT_TESTS} )
 
