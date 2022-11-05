@@ -52,23 +52,18 @@ namespace allradixsort
 	template<>
 	struct traits<int64_t> : integral_traits< int64_t, 64, 8> {};
 
-
-	template<typename KeyType, size_t anum_bits, size_t abits_in_mask>
-	struct float_traits : integral_traits<KeyType, anum_bits, abits_in_mask>
+	template<>
+	struct traits<float> : integral_traits< float, 32, 8>
 	{
+		using proxy_type = uint32_t;
 		static_assert(num_passes % 2 == 0, "num_passes should be even");
 	};
 
 	template<>
-	struct traits<float> : float_traits< float, 32, 8> 
-	{
-		using proxy_type = uint32_t;
-	};
-
-	template<>
-	struct traits<double> : float_traits< double, 64, 11> 
+	struct traits<double> : integral_traits< double, 64, 11>
 	{
 		using proxy_type = uint64_t;
+		static_assert(num_passes % 2 == 0, "num_passes should be even");
 	};
 
 }

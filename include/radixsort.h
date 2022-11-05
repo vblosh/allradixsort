@@ -10,6 +10,9 @@
 
 namespace allradixsort
 {
+	template<class>
+	inline constexpr bool dependent_false_v = false;
+
 	// Sorts [begin, end) using insertion sort with the given key extraction function.
 	template<class KeyType, class Iter, class GetKeyFn>
 	void sort(Iter begin, Iter end, GetKeyFn get_key)
@@ -21,7 +24,7 @@ namespace allradixsort
 			float_sort<KeyType, Iter, GetKeyFn>(begin, end, get_key);
 		}
 		else {
-			static_assert(false, "this key type is not supported");
+			static_assert(dependent_false_v<KeyType>, "this key type is not supported");
 		}
 	}
 
