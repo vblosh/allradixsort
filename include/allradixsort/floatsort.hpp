@@ -4,7 +4,7 @@
 #include <functional>
 #include <type_traits>
 
-#include "traits.h"
+#include "traits.hpp"
 
 namespace allradixsort
 {

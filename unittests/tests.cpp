@@ -5,7 +5,7 @@
 #include <limits>
 #include <iomanip>
 
-#include "radixsort.h"
+#include "allradixsort/radixsort.hpp"
 
 namespace allradixsort
 {

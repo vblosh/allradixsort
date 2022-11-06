@@ -6,7 +6,7 @@
 #include <chrono>
 #include <algorithm>
 
-#include "radixsort.h"
+#include "allradixsort/radixsort.hpp"
 
 template<class KeyType>
 using Array = std::vector<KeyType>; 
