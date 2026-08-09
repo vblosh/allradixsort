@@ -21,73 +21,62 @@
  * IN THE SOFTWARE.
  */
 
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
 #include <limits>
 
 namespace allradixsort
 {
-	using index_t = uint32_t;
+	using index_t = std::size_t;
 
 	template <typename It>
 	using cont_type_t = typename std::iterator_traits<It>::value_type;
 
 	template<typename KeyType>
-	struct traits;
+	struct traits
+	{
+		static constexpr bool is_integer = false;
+		static constexpr bool is_signed_integer = false;
+		static constexpr bool is_float = false;
+	};
 
-	template<typename KeyType, size_t anum_bits, size_t abits_in_mask>
+	template<typename KeyType, std::size_t NumBits, std::size_t BitsInMask>
 	struct integral_traits
 	{
-		static constexpr size_t num_bits = anum_bits;
-		static constexpr size_t bits_in_mask = abits_in_mask;
-		static constexpr size_t num_passes = num_bits % bits_in_mask == 0 ?
-			num_bits / bits_in_mask
-			: num_bits / bits_in_mask + 1;
-		static constexpr size_t mask = ~(~0x0u << bits_in_mask);
-		static constexpr size_t num_bins = mask + 1;
+		static_assert(BitsInMask > 0, "a radix digit must contain at least one bit");
+		static_assert(BitsInMask < std::numeric_limits<std::size_t>::digits,
+			"the radix digit is too wide for size_t");
+
+		static constexpr std::size_t num_bits = NumBits;
+		static constexpr std::size_t bits_in_mask = BitsInMask;
+		static constexpr std::size_t num_passes = (num_bits + bits_in_mask - 1) / bits_in_mask;
+		static constexpr std::size_t num_bins = std::size_t{ 1 } << bits_in_mask;
+		static constexpr std::size_t mask = num_bins - 1;
 		static constexpr bool is_integer = std::numeric_limits<KeyType>::is_integer;
 		static constexpr bool is_signed_integer = std::numeric_limits<KeyType>::is_signed
 			&& std::numeric_limits<KeyType>::is_integer;
 		static constexpr bool is_float = std::numeric_limits<KeyType>::is_iec559;
-//		static_assert((is_signed_integer && bits_in_mask == 8) || !is_signed_integer, "by signed integer num_bits should be 8");
 	};
 
-	template<>
-	struct traits<uint8_t> : integral_traits< uint8_t, 8, 4> {};
+	template<> struct traits<std::uint8_t> : integral_traits<std::uint8_t, 8, 4> {};
+	template<> struct traits<std::uint16_t> : integral_traits<std::uint16_t, 16, 8> {};
+	template<> struct traits<std::uint32_t> : integral_traits<std::uint32_t, 32, 8> {};
+	template<> struct traits<std::uint64_t> : integral_traits<std::uint64_t, 64, 8> {};
+	template<> struct traits<std::int8_t> : integral_traits<std::int8_t, 8, 4> {};
+	template<> struct traits<std::int16_t> : integral_traits<std::int16_t, 16, 8> {};
+	template<> struct traits<std::int32_t> : integral_traits<std::int32_t, 32, 8> {};
+	template<> struct traits<std::int64_t> : integral_traits<std::int64_t, 64, 8> {};
 
 	template<>
-	struct traits<uint16_t> : integral_traits< uint16_t, 16, 8> {};
-	
-	template<>
-	struct traits<uint32_t> : integral_traits< uint32_t, 32, 8> {};
-
-	template<>
-	struct traits<uint64_t> : integral_traits< uint64_t, 64, 8> {};
-
-	template<>
-	struct traits<int8_t> : integral_traits< int8_t, 8, 4> {};
-
-	template<>
-	struct traits<int16_t> : integral_traits< int16_t, 16, 8> {};
-
-	template<>
-	struct traits<int32_t> : integral_traits< int32_t, 32, 8> {};
-
-	template<>
-	struct traits<int64_t> : integral_traits< int64_t, 64, 8> {};
-
-	template<>
-	struct traits<float> : integral_traits< float, 32, 8>
+	struct traits<float> : integral_traits<float, 32, 8>
 	{
-		using proxy_type = uint32_t;
-		static_assert(num_passes % 2 == 0, "num_passes should be even");
+		using proxy_type = std::uint32_t;
 	};
 
 	template<>
-	struct traits<double> : integral_traits< double, 64, 11>
+	struct traits<double> : integral_traits<double, 64, 11>
 	{
-		using proxy_type = uint64_t;
-		static_assert(num_passes % 2 == 0, "num_passes should be even");
+		using proxy_type = std::uint64_t;
 	};
-
 }
-
-

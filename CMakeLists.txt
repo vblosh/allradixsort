@@ -1,40 +1,55 @@
-# Works with 3.14 
 cmake_minimum_required(VERSION 3.14)
 
-project (allradixsort 
-    VERSION 0.1 
-    DESCRIPTION "It is a radix sort implementation for all primitive data types"
+project(allradixsort
+    VERSION 0.1.0
+    DESCRIPTION "Stable radix sort for primitive integer and floating-point keys"
     LANGUAGES CXX)
 
-file(GLOB HEADER_LIST CONFIGURE_DEPENDS "include/allradixsort/*.hpp")
-add_library(allradixsort INTERFACE ${HEADER_LIST})
-target_include_directories(allradixsort INTERFACE include)
+include(GNUInstallDirs)
 
-# Only do these if this is the main project, and not if it is included through add_subdirectory
+add_library(allradixsort INTERFACE)
+add_library(allradixsort::allradixsort ALIAS allradixsort)
+target_compile_features(allradixsort INTERFACE cxx_std_17)
+target_include_directories(allradixsort INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    option(ALLRADIXSORT_BUILD_TESTS "Build allradixsort unit tests" ON)
+    option(ALLRADIXSORT_BUILD_BENCHMARKS "Build allradixsort performance tests" ON)
 
-    # Optionally set things like CMAKE_CXX_STANDARD, CMAKE_POSITION_INDEPENDENT_CODE here
-    set(CMAKE_CXX_STANDARD 17)
-    set(CMAKE_CXX_STANDARD_REQUIRED ON)
-    # Let's ensure -std=c++xx instead of -std=g++xx
-    set(CMAKE_CXX_EXTENSIONS OFF)
-
-    # Let's nicely support folders in IDEs
-    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
-    # Testing only available if this is the main app and GTest installed
-    find_package(GTest)
-    if(GTest_FOUND)
-        message("GTest found, build unit tests")
-
-        # Note this needs to be done in the main CMakeLists
-        # since it calls enable_testing, which must be in the
-        # main CMakeLists.
+    if(ALLRADIXSORT_BUILD_TESTS)
         include(CTest)
-        add_subdirectory(unittests)
+        find_package(GTest QUIET)
+        if(GTest_FOUND)
+            add_subdirectory(unittests)
+        else()
+            message(WARNING "GoogleTest was not found; unit tests will not be built")
+        endif()
     endif()
 
-    # The compiled perfomance tests code is here
-    add_subdirectory (perftests)
+    if(ALLRADIXSORT_BUILD_BENCHMARKS)
+        add_subdirectory(perftests)
+    endif()
 endif()
 
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    cmake/allradixsortConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/allradixsort)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion)
+
+install(TARGETS allradixsort EXPORT allradixsortTargets)
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(EXPORT allradixsortTargets
+    FILE allradixsortTargets.cmake
+    NAMESPACE allradixsort::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/allradixsort)
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfigVersion.cmake
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/allradixsort)

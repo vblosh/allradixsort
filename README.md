@@ -1,100 +1,86 @@
-# About allradixsort library
-It is a radix sort implementation for all primitive data types :
-uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t, int64_t, float, double
+# allradixsort
 
-It is ~10-20x times faster as a std::sort for small data types on arrays of 1.000.000 elements, see test results.
+`allradixsort` is a header-only C++17 stable LSD radix-sort library for these key types:
 
-It is a header only library, simply add header files to your project.
+`uint8_t`, `uint16_t`, `uint32_t`, `uint64_t`, `int8_t`, `int16_t`, `int32_t`, `int64_t`, `float`, and `double`.
 
-# Using
+The implementation is intended for large random-access ranges where its extra `O(n)` buffer is an acceptable tradeoff for linear-time sorting over a fixed number of radix passes.
 
-1. Use std::sort like interface for arrays of primitive data types.
-```
-  allradixsort::sort(arr.begin(), arr.end()); 
-```
+## Usage
 
+Sort primitive values with the `std::sort`-like interface:
 
-2. Use extract key field lambda function for arrays of complex data types, for example
-```
-  struct Item 
-  {
-      uint32_t Id; // Key field in the complex type to sort on
-      // Some additional data
-      float data;
-      // some more data ...
-  }
-  
-  std::vector<Item> arr;
-  // fill array
-  // sort it using extract key field lambda function : [](auto& element) -> uint32_t& { return element.Id; }
-  allradixsort::sort<uint32_t>(arr.begin(), arr.end(), [](auto& element) -> uint32_t& { return element.Id; });
+```cpp
+#include <vector>
+#include <allradixsort/radixsort.hpp>
+
+std::vector<std::int32_t> values{4, -1, 2, 2};
+allradixsort::sort(values.begin(), values.end());
 ```
 
-# Hacking
+Sort records by returning or referencing a supported key:
 
-## Building
+```cpp
+struct Item
+{
+    std::uint32_t id;
+    float data;
+};
 
-This project uses the CMake build-system. To build it, simply run the following commands:
+std::vector<Item> items;
+allradixsort::sort<std::uint32_t>(items.begin(), items.end(),
+    [](const Item& item) { return item.id; });
+```
+
+Equal keys retain their original order. Iterators must be random-access. The value type must be default-constructible and move-assignable because the implementation uses a temporary `std::vector` buffer.
+
+## Floating-point ordering
+
+`float` and `double` require IEEE-754 representations. Their bit patterns are mapped to a deterministic total representation order:
+
+- negative NaNs
+- negative infinity and finite negative numbers
+- `-0`, then `+0`
+- finite positive numbers and positive infinity
+- positive NaNs
+
+This deliberately distinguishes signed zero and gives NaNs an order, unlike ordinary floating-point `<` comparisons. The implementation reads floating-point bits with `memcpy`, so it does not violate C++ strict-aliasing rules or modify keys while calculating radix digits.
+
+## CMake
+
+Use the repository directly:
+
+```cmake
+add_subdirectory(path/to/allradixsort)
+target_link_libraries(your_target PRIVATE allradixsort::allradixsort)
+```
+
+The target propagates the C++17 requirement. Installation is also supported:
 
 ```console
-$ mkdir build
-$ cd build/
-$ cmake ..
-$ make
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+cmake --install build --prefix /desired/prefix
 ```
 
-## Running perfomance tests
+An installed package can be consumed with `find_package(allradixsort CONFIG REQUIRED)` and the same `allradixsort::allradixsort` target.
 
-1. Build the project
-2. `cd build/ &&  perftests/perftests`
+## Tests and performance measurements
 
-## Running unit tests
+GoogleTest is discovered automatically for top-level builds. Run the tests with:
 
-This project uses *GoogleTest*.
-
-1. Build the project
-2. `cd build/ && unittests/unittests`
-
-# Test results on Intel(R) Core(TM) i5-12500H 2.50 GHz
+```console
+ctest --test-dir build --output-on-failure
 ```
-Using uint8_t data
- std::sort 1000000 elements 10 times,  total 10000000 duration 264 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 28 ms
-radix sort is 9.42857 times faster for 1000000 elements
-Using uint16_t data
- std::sort 1000000 elements 10 times,  total 10000000 duration 596 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 31 ms
-radix sort is 19.2258 times faster for 1000000 elements
-Using uint32_t data
- std::sort 1000000 elements 10 times,  total 10000000 duration 674 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 69 ms
-radix sort is 9.76812 times faster for 1000000 elements
-Using uint64_t data
- std::sort 1000000 elements 10 times,  total 10000000 duration 689 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 182 ms
-radix sort is 3.78571 times faster for 1000000 elements
-Using int8_t data
- std::sort 1000000 elements 10 times,  total 10000000 duration 259 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 34 ms
-radix sort is 7.61765 times faster for 1000000 elements
-Using int16_t data
- std::sort 1000000 elements 10 times,  total 10000000 duration 576 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 32 ms
-radix sort is 18 times faster for 1000000 elements
-Using int32_t data
- std::sort 1000000 elements 10 times,  total 10000000 duration 677 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 74 ms
-radix sort is 9.14865 times faster for 1000000 elements
-Using int64_t data
- std::sort 1000000 elements 10 times,  total 10000000 duration 685 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 182 ms
-radix sort is 3.76374 times faster for 1000000 elements
-Using float data
- std::sort 1000000 elements 10 times,  total 10000000 duration 736 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 85 ms
-radix sort is 8.65882 times faster for 1000000 elements
-Using double data
- std::sort 1000000 elements 10 times,  total 10000000 duration 744 ms
-radix sort 1000000 elements 10 times,  total 10000000 duration 297 ms
-radix sort is 2.50505 times faster for 1000000 elements
+
+The optional performance executable compares `std::sort` and radix sort using the same deterministically generated inputs and validates every sorted copy:
+
+```console
+./build/perftests/perftests
 ```
+
+Configure with `-DALLRADIXSORT_BUILD_TESTS=OFF` or `-DALLRADIXSORT_BUILD_BENCHMARKS=OFF` to disable either target. Performance depends on the compiler, optimization level, data type, distribution, hardware, and input size; benchmark locally rather than relying on a fixed speedup claim.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

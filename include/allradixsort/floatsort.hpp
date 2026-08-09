@@ -21,163 +21,95 @@
  * IN THE SOFTWARE.
  */
 
-#include <vector>
-#include <array>
-#include <functional>
+#include <cstring>
+#include <limits>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 #include "traits.hpp"
 
 namespace allradixsort
 {
-	// ================================================================================================
-	// flip a float for sorting
-	//  finds SIGN of fp number.
-	//  if it's 1 (negative float), it flips all bits
-	//  if it's 0 (positive float), it flips the sign only
-	// ================================================================================================
 	template<class KeyType, class ProxyType>
-	ProxyType float_flip(KeyType& f);
-
-	template<>
-	uint32_t float_flip<float, uint32_t>(float& f)
+	inline ProxyType float_flip(const KeyType& value) noexcept
 	{
-		uint32_t val = *reinterpret_cast<uint32_t*>(&f);
-		uint32_t mask = -int32_t(val >> 31) | 0x80000000;
-		return val ^ mask;
-	};
+		static_assert(std::is_floating_point<KeyType>::value, "KeyType must be floating point");
+		static_assert(std::is_unsigned<ProxyType>::value, "ProxyType must be unsigned");
+		static_assert(sizeof(KeyType) == sizeof(ProxyType), "key and proxy sizes must match");
+		static_assert(std::numeric_limits<KeyType>::is_iec559, "IEEE-754 floating point is required");
 
-	template<>
-	uint64_t float_flip<double, uint64_t>(double& f)
-	{
-		uint64_t val = *reinterpret_cast<uint64_t*>(&f);
-		size_t mask = -int64_t(val >> 63) | 0x8000000000000000;
-		return val ^ mask;
-	};
+		ProxyType bits{};
+		std::memcpy(&bits, &value, sizeof(bits));
+		constexpr auto sign_bit = ProxyType{ 1 } << (std::numeric_limits<ProxyType>::digits - 1);
+		const auto mask = (bits & sign_bit) != 0 ? ~ProxyType{ 0 } : sign_bit;
+		return bits ^ mask;
+	}
 
-	// ================================================================================================
-	// flip a float back (invert FloatFlip)
-	//  signed was flipped from above, so:
-	//  if sign is 1 (negative), it flips the sign bit back
-	//  if sign is 0 (positive), it flips all bits back
-	// ================================================================================================
-	template<class KeyType, class ProxyType>
-	ProxyType float_flip_inv(KeyType& f);
-
-	template<>
-	uint32_t float_flip_inv<float, uint32_t>(float& f)
-	{
-		uint32_t val = *reinterpret_cast<uint32_t*>(&f);
-		uint32_t mask = ((val >> 31) - 1) | 0x80000000;
-		return val ^ mask;
-	};
-
-	template<>
-	uint64_t float_flip_inv<double, uint64_t>(double& f)
-	{
-		uint64_t val = *reinterpret_cast<uint64_t*>(&f);
-		size_t mask = ((val >> 63) - 1) | 0x8000000000000000;
-		return val ^ mask;
-	};
-
-
-	// Sorts [fbegin, fend) using insertion sort with the given key extraction function.
 	template<class KeyType, class Iter, class GetKeyFn>
 	void float_sort(Iter begin, Iter end, GetKeyFn get_key)
 	{
-		constexpr size_t num_passes = traits<KeyType>::num_passes;
-		constexpr size_t bits_in_mask = traits<KeyType>::bits_in_mask;
-		constexpr size_t mask = traits<KeyType>::mask;
-		constexpr size_t num_bins = traits<KeyType>::num_bins;
-		size_t size = end - begin;
+		using proxy_type = typename traits<KeyType>::proxy_type;
+		constexpr auto num_passes = traits<KeyType>::num_passes;
+		constexpr auto bits_in_mask = traits<KeyType>::bits_in_mask;
+		constexpr auto mask = traits<KeyType>::mask;
+		constexpr auto num_bins = traits<KeyType>::num_bins;
 
-		using hists_vector = std::vector<std::vector<index_t>>;
-		// Creating histograms, count each occurrence of indexed-byte value.
-		// In particular, histograms don't change when you change the order, 
-		// so I just do all the histogramming in one pass through the data. One read builds several histograms.
-		hists_vector hist{ num_passes, std::vector<index_t>(num_bins) };
-		for (Iter it = begin; it != end; ++it)
-		{
-			auto key = float_flip<KeyType, typename traits<KeyType>::proxy_type>(get_key(*it));
-			// save flipped key on first access
-			get_key(*it) = *reinterpret_cast<KeyType*>(&key);
-			for (size_t pass = 0; pass < num_passes; ++pass)
-			{
-				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-				++hist[pass][pass_hist_val];
+		const auto distance = end - begin;
+		if (distance <= 1) {
+			return;
+		}
+		const auto size = static_cast<std::size_t>(distance);
+
+		std::vector<std::vector<index_t>> hist(num_passes, std::vector<index_t>(num_bins));
+		for (auto it = begin; it != end; ++it) {
+			const auto key = float_flip<KeyType, proxy_type>(get_key(*it));
+			for (std::size_t pass = 0; pass < num_passes; ++pass) {
+				const auto digit = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
+				++hist[pass][digit];
 			}
 		}
 
-		// accumulate histograms.
-		// generate positional offsets. adjust starting point if signed.
-		for (size_t pass = 0; pass < num_passes; ++pass)
-		{
-			index_t tsum, sum = 0;
-			for (size_t i = 0; i < num_bins; ++i)
-			{
-				tsum = hist[pass][i] + sum;
-				hist[pass][i] = sum;
-				sum = tsum;
+		for (auto& pass_hist : hist) {
+			index_t sum = 0;
+			for (auto& count : pass_hist) {
+				const auto next = sum + count;
+				count = sum;
+				sum = next;
 			}
 		}
 
-		// distribute.
-		// stable reordering of elements. backward to avoid shifting
-		// the counter array.
-		// temp buffer to hold values in odd passes
 		std::vector<cont_type_t<Iter>> buffer(size);
-
-		for (size_t pass = 0; pass < num_passes;)
-		{
-			for (Iter it = begin; it != end; ++it)
-			{
-				auto key = *reinterpret_cast<typename traits<KeyType>::proxy_type*>(&get_key(*it));
-
-				auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-				auto index = hist[pass][pass_hist_val];
-
-				*(buffer.begin() + index) = std::move(*it);
-				++hist[pass][pass_hist_val];
-			}
-			++pass;
-
-			// use input container as a buffer
-			if (pass == num_passes - 1) {
-				for (auto it = buffer.begin(); it != buffer.end(); ++it)
-				{
-					auto key = *reinterpret_cast<typename traits<KeyType>::proxy_type*>(&get_key(*it));
-					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-					auto index = hist[pass][pass_hist_val];
-
-					// restore flipped key on last access
-					auto restored_key = float_flip_inv<KeyType, typename traits<KeyType>::proxy_type>(get_key(*it));
-					get_key(*it) = *reinterpret_cast<KeyType*>(&restored_key);
-
-					*(begin + index) = std::move(*it);
-					++hist[pass][pass_hist_val];
+		using difference_type = typename std::iterator_traits<Iter>::difference_type;
+		for (std::size_t pass = 0; pass < num_passes; ++pass) {
+			if ((pass % 2) == 0) {
+				for (auto it = begin; it != end; ++it) {
+					const auto key = float_flip<KeyType, proxy_type>(get_key(*it));
+					const auto digit = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
+					buffer[hist[pass][digit]++] = std::move(*it);
 				}
 			}
 			else {
-				for (auto it = buffer.begin(); it != buffer.end(); ++it)
-				{
-					auto key = *reinterpret_cast<typename traits<KeyType>::proxy_type*>(&get_key(*it));
-
-					auto pass_hist_val = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-					auto index = hist[pass][pass_hist_val];
-
-					*(begin + index) = std::move(*it);
-					++hist[pass][pass_hist_val];
+				for (auto& element : buffer) {
+					const auto key = float_flip<KeyType, proxy_type>(get_key(element));
+					const auto digit = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
+					*(begin + static_cast<difference_type>(hist[pass][digit]++)) = std::move(element);
 				}
 			}
-			++pass;
+		}
+
+		if constexpr ((num_passes % 2) != 0) {
+			for (auto& element : buffer) {
+				*begin++ = std::move(element);
+			}
 		}
 	}
 
-	// Sorts [begin, end) using radix sort 
 	template<class Iter>
 	void float_sort(Iter begin, Iter end)
 	{
-		float_sort<cont_type_t<Iter>, Iter>(begin, end, [](const cont_type_t<Iter>& el) { return el; });
+		using key_type = cont_type_t<Iter>;
+		float_sort<key_type>(begin, end,
+			[](const key_type& element) -> const key_type& { return element; });
 	}
 }
-
