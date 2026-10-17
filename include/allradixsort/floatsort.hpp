@@ -21,95 +21,40 @@
  * IN THE SOFTWARE.
  */
 
-#include <cstring>
-#include <limits>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include "traits.hpp"
+#include "detail/sort_impl.hpp"
 
 namespace allradixsort
 {
-	template<class KeyType, class ProxyType>
-	inline ProxyType float_flip(const KeyType& value) noexcept
-	{
-		static_assert(std::is_floating_point<KeyType>::value, "KeyType must be floating point");
-		static_assert(std::is_unsigned<ProxyType>::value, "ProxyType must be unsigned");
-		static_assert(sizeof(KeyType) == sizeof(ProxyType), "key and proxy sizes must match");
-		static_assert(std::numeric_limits<KeyType>::is_iec559, "IEEE-754 floating point is required");
-
-		ProxyType bits{};
-		std::memcpy(&bits, &value, sizeof(bits));
-		constexpr auto sign_bit = ProxyType{ 1 } << (std::numeric_limits<ProxyType>::digits - 1);
-		const auto mask = (bits & sign_bit) != 0 ? ~ProxyType{ 0 } : sign_bit;
-		return bits ^ mask;
-	}
-
-	template<class KeyType, class Iter, class GetKeyFn>
+	template<
+		class KeyType = void,
+		class Iter,
+		class GetKeyFn,
+		class ActualKeyType = std::conditional_t<
+			std::is_void_v<KeyType>,
+			std::decay_t<std::invoke_result_t<GetKeyFn&, decltype(* std::declval<Iter>())>>,
+			std::decay_t<KeyType>>>
 	void float_sort(Iter begin, Iter end, GetKeyFn get_key)
 	{
-		using proxy_type = typename traits<KeyType>::proxy_type;
-		constexpr auto num_passes = traits<KeyType>::num_passes;
-		constexpr auto bits_in_mask = traits<KeyType>::bits_in_mask;
-		constexpr auto mask = traits<KeyType>::mask;
-		constexpr auto num_bins = traits<KeyType>::num_bins;
-
-		const auto distance = end - begin;
-		if (distance <= 1) {
-			return;
-		}
-		const auto size = static_cast<std::size_t>(distance);
-
-		std::vector<std::vector<index_t>> hist(num_passes, std::vector<index_t>(num_bins));
-		for (auto it = begin; it != end; ++it) {
-			const auto key = float_flip<KeyType, proxy_type>(get_key(*it));
-			for (std::size_t pass = 0; pass < num_passes; ++pass) {
-				const auto digit = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-				++hist[pass][digit];
-			}
-		}
-
-		for (auto& pass_hist : hist) {
-			index_t sum = 0;
-			for (auto& count : pass_hist) {
-				const auto next = sum + count;
-				count = sum;
-				sum = next;
-			}
-		}
-
-		std::vector<cont_type_t<Iter>> buffer(size);
-		using difference_type = typename std::iterator_traits<Iter>::difference_type;
-		for (std::size_t pass = 0; pass < num_passes; ++pass) {
-			if ((pass % 2) == 0) {
-				for (auto it = begin; it != end; ++it) {
-					const auto key = float_flip<KeyType, proxy_type>(get_key(*it));
-					const auto digit = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-					buffer[hist[pass][digit]++] = std::move(*it);
-				}
-			}
-			else {
-				for (auto& element : buffer) {
-					const auto key = float_flip<KeyType, proxy_type>(get_key(element));
-					const auto digit = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-					*(begin + static_cast<difference_type>(hist[pass][digit]++)) = std::move(element);
-				}
-			}
-		}
-
-		if constexpr ((num_passes % 2) != 0) {
-			for (auto& element : buffer) {
-				*begin++ = std::move(element);
-			}
-		}
+		static_assert(traits<ActualKeyType>::is_float, "KeyType must be floating point");
+		detail::radix_sort_impl<ActualKeyType>(begin, end, get_key);
 	}
 
-	template<class Iter>
+	template<
+		class KeyType = void,
+		class Iter,
+		class ActualKeyType = std::conditional_t<
+			std::is_void_v<KeyType>,
+			cont_type_t<Iter>,
+			std::decay_t<KeyType>>>
 	void float_sort(Iter begin, Iter end)
 	{
-		using key_type = cont_type_t<Iter>;
-		float_sort<key_type>(begin, end,
-			[](const key_type& element) -> const key_type& { return element; });
+		static_assert(std::is_same_v<ActualKeyType, cont_type_t<Iter>>,
+			"KeyType must match container value_type for scalar sort");
+		float_sort<ActualKeyType>(begin, end,
+			[](const auto& element) noexcept -> const auto& { return element; });
 	}
 }

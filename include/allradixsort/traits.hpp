@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <iterator>
 #include <limits>
+#include <type_traits>
 
 namespace allradixsort
 {
@@ -33,7 +34,7 @@ namespace allradixsort
 	template <typename It>
 	using cont_type_t = typename std::iterator_traits<It>::value_type;
 
-	template<typename KeyType>
+	template<typename KeyType, typename = void>
 	struct traits
 	{
 		static constexpr bool is_integer = false;
@@ -59,14 +60,9 @@ namespace allradixsort
 		static constexpr bool is_float = std::numeric_limits<KeyType>::is_iec559;
 	};
 
-	template<> struct traits<std::uint8_t> : integral_traits<std::uint8_t, 8, 4> {};
-	template<> struct traits<std::uint16_t> : integral_traits<std::uint16_t, 16, 8> {};
-	template<> struct traits<std::uint32_t> : integral_traits<std::uint32_t, 32, 8> {};
-	template<> struct traits<std::uint64_t> : integral_traits<std::uint64_t, 64, 8> {};
-	template<> struct traits<std::int8_t> : integral_traits<std::int8_t, 8, 4> {};
-	template<> struct traits<std::int16_t> : integral_traits<std::int16_t, 16, 8> {};
-	template<> struct traits<std::int32_t> : integral_traits<std::int32_t, 32, 8> {};
-	template<> struct traits<std::int64_t> : integral_traits<std::int64_t, 64, 8> {};
+	template<typename KeyType>
+	struct traits<KeyType, std::enable_if_t<std::is_integral_v<KeyType> && !std::is_same_v<KeyType, bool>>>
+		: integral_traits<KeyType, sizeof(KeyType) * 8, 8> {};
 
 	template<>
 	struct traits<float> : integral_traits<float, 32, 8>
@@ -75,8 +71,11 @@ namespace allradixsort
 	};
 
 	template<>
-	struct traits<double> : integral_traits<double, 64, 11>
+	struct traits<double> : integral_traits<double, 64, 8>
 	{
 		using proxy_type = std::uint64_t;
 	};
+
+	template<> struct traits<const float> : traits<float> {};
+	template<> struct traits<const double> : traits<double> {};
 }

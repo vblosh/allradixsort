@@ -15,6 +15,14 @@ target_include_directories(allradixsort INTERFACE
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    set(ALLRADIXSORT_IS_TOP_LEVEL ON)
+else()
+    set(ALLRADIXSORT_IS_TOP_LEVEL OFF)
+endif()
+
+option(ALLRADIXSORT_INSTALL "Generate install targets" ${ALLRADIXSORT_IS_TOP_LEVEL})
+
+if(ALLRADIXSORT_IS_TOP_LEVEL)
     option(ALLRADIXSORT_BUILD_TESTS "Build allradixsort unit tests" ON)
     option(ALLRADIXSORT_BUILD_BENCHMARKS "Build allradixsort performance tests" ON)
 
@@ -33,23 +41,25 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     endif()
 endif()
 
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-    cmake/allradixsortConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/allradixsort)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion)
+if(ALLRADIXSORT_INSTALL)
+    include(CMakePackageConfigHelpers)
+    configure_package_config_file(
+        cmake/allradixsortConfig.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfig.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/allradixsort)
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion)
 
-install(TARGETS allradixsort EXPORT allradixsortTargets)
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(EXPORT allradixsortTargets
-    FILE allradixsortTargets.cmake
-    NAMESPACE allradixsort::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/allradixsort)
-install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/allradixsort)
+    install(TARGETS allradixsort EXPORT allradixsortTargets)
+    install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(EXPORT allradixsortTargets
+        FILE allradixsortTargets.cmake
+        NAMESPACE allradixsort::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/allradixsort)
+    install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/allradixsortConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/allradixsort)
+endif()

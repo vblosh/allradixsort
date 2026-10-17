@@ -21,6 +21,9 @@
  * IN THE SOFTWARE.
  */
 
+#include <type_traits>
+#include <utility>
+
 #include "traits.hpp"
 #include "integersort.hpp"
 #include "floatsort.hpp"
@@ -30,25 +33,39 @@ namespace allradixsort
 	template<class>
 	inline constexpr bool dependent_false_v = false;
 
-	template<class KeyType, class Iter, class GetKeyFn>
+	template<
+		class KeyType = void,
+		class Iter,
+		class GetKeyFn,
+		class ActualKeyType = std::conditional_t<
+			std::is_void_v<KeyType>,
+			std::decay_t<std::invoke_result_t<GetKeyFn&, decltype(* std::declval<Iter>())>>,
+			std::decay_t<KeyType>>>
 	void sort(Iter begin, Iter end, GetKeyFn get_key)
 	{
-		if constexpr (traits<KeyType>::is_integer) {
-			integer_sort<KeyType>(begin, end, get_key);
+		if constexpr (traits<ActualKeyType>::is_integer) {
+			integer_sort<ActualKeyType>(begin, end, get_key);
 		}
-		else if constexpr (traits<KeyType>::is_float) {
-			float_sort<KeyType>(begin, end, get_key);
+		else if constexpr (traits<ActualKeyType>::is_float) {
+			float_sort<ActualKeyType>(begin, end, get_key);
 		}
 		else {
-			static_assert(dependent_false_v<KeyType>, "this key type is not supported");
+			static_assert(dependent_false_v<ActualKeyType>, "this key type is not supported");
 		}
 	}
 
-	template<class Iter>
+	template<
+		class KeyType = void,
+		class Iter,
+		class ActualKeyType = std::conditional_t<
+			std::is_void_v<KeyType>,
+			cont_type_t<Iter>,
+			std::decay_t<KeyType>>>
 	void sort(Iter begin, Iter end)
 	{
-		using key_type = cont_type_t<Iter>;
-		sort<key_type>(begin, end,
-			[](const key_type& element) -> const key_type& { return element; });
+		static_assert(std::is_same_v<ActualKeyType, cont_type_t<Iter>>,
+			"KeyType must match container value_type for scalar sort");
+		sort<ActualKeyType>(begin, end,
+			[](const auto& element) noexcept -> const auto& { return element; });
 	}
 }

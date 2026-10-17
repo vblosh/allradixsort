@@ -21,85 +21,40 @@
  * IN THE SOFTWARE.
  */
 
-#include <limits>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include "traits.hpp"
+#include "detail/sort_impl.hpp"
 
 namespace allradixsort
 {
-	template<class KeyType>
-	inline auto normalized_integer_key(KeyType value) noexcept
-	{
-		static_assert(std::is_integral<KeyType>::value, "KeyType must be integral");
-		using unsigned_type = typename std::make_unsigned<KeyType>::type;
-		auto key = static_cast<unsigned_type>(value);
-		if constexpr (std::is_signed<KeyType>::value) {
-			constexpr auto sign_bit = unsigned_type{ 1 }
-				<< (std::numeric_limits<unsigned_type>::digits - 1);
-			key ^= sign_bit;
-		}
-		return key;
-	}
-
-	template<class KeyType, class Iter, class GetKeyFn>
+	template<
+		class KeyType = void,
+		class Iter,
+		class GetKeyFn,
+		class ActualKeyType = std::conditional_t<
+			std::is_void_v<KeyType>,
+			std::decay_t<std::invoke_result_t<GetKeyFn&, decltype(* std::declval<Iter>())>>,
+			std::decay_t<KeyType>>>
 	void integer_sort(Iter begin, Iter end, GetKeyFn get_key)
 	{
-		using unsigned_key_type = typename std::make_unsigned<KeyType>::type;
-		constexpr auto num_passes = traits<KeyType>::num_passes;
-		constexpr auto bits_in_mask = traits<KeyType>::bits_in_mask;
-		constexpr auto mask = static_cast<unsigned_key_type>(traits<KeyType>::mask);
-		constexpr auto num_bins = traits<KeyType>::num_bins;
+		static_assert(traits<ActualKeyType>::is_integer, "KeyType must be an integer");
+		detail::radix_sort_impl<ActualKeyType>(begin, end, get_key);
+	}
 
-		const auto distance = end - begin;
-		if (distance <= 1) {
-			return;
-		}
-		const auto size = static_cast<std::size_t>(distance);
-
-		std::vector<std::vector<index_t>> hist(num_passes, std::vector<index_t>(num_bins));
-		for (auto it = begin; it != end; ++it) {
-			const auto key = normalized_integer_key<KeyType>(get_key(*it));
-			for (std::size_t pass = 0; pass < num_passes; ++pass) {
-				const auto digit = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-				++hist[pass][digit];
-			}
-		}
-
-		for (auto& pass_hist : hist) {
-			index_t sum = 0;
-			for (auto& count : pass_hist) {
-				const auto next = sum + count;
-				count = sum;
-				sum = next;
-			}
-		}
-
-		std::vector<cont_type_t<Iter>> buffer(size);
-		using difference_type = typename std::iterator_traits<Iter>::difference_type;
-		for (std::size_t pass = 0; pass < num_passes; ++pass) {
-			if ((pass % 2) == 0) {
-				for (auto it = begin; it != end; ++it) {
-					const auto key = normalized_integer_key<KeyType>(get_key(*it));
-					const auto digit = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-					buffer[hist[pass][digit]++] = std::move(*it);
-				}
-			}
-			else {
-				for (auto& element : buffer) {
-					const auto key = normalized_integer_key<KeyType>(get_key(element));
-					const auto digit = static_cast<index_t>((key >> (bits_in_mask * pass)) & mask);
-					*(begin + static_cast<difference_type>(hist[pass][digit]++)) = std::move(element);
-				}
-			}
-		}
-
-		if constexpr ((num_passes % 2) != 0) {
-			for (auto& element : buffer) {
-				*begin++ = std::move(element);
-			}
-		}
+	template<
+		class KeyType = void,
+		class Iter,
+		class ActualKeyType = std::conditional_t<
+			std::is_void_v<KeyType>,
+			cont_type_t<Iter>,
+			std::decay_t<KeyType>>>
+	void integer_sort(Iter begin, Iter end)
+	{
+		static_assert(std::is_same_v<ActualKeyType, cont_type_t<Iter>>,
+			"KeyType must match container value_type for scalar sort");
+		integer_sort<ActualKeyType>(begin, end,
+			[](const auto& element) noexcept -> const auto& { return element; });
 	}
 }
